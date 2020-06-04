@@ -1,15 +1,16 @@
 import re
 
 class Bot(object):
-
     #--------------------------------------------------------------------------------
     # Globals
     #--------------------------------------------------------------------------------
-    self.cmd_seq = re.compile('^!#(\w+)')
+    
 
     #----------------------------------------------------------------------------
     def __init__(self):
         self.enabled = True;
+
+        self.cmd_seq = re.compile('^!#(\w+)')
 
     #--------------------------------------------------------------------------------
     def take_user_input(self, line):
@@ -19,10 +20,10 @@ class Bot(object):
             Argument:
                 line - line of text to be parsed
         '''
-        was_cmd = parseCommand(line)
+        was_cmd = self.parseCommand(line)
 
         if(self.enabled and was_cmd == False):
-            parseNonCommand(line)
+            self.parseNonCommand(line)
             
         return was_cmd;  #TODO: May want to return if Bot Handled or not so don't forward to end point if Bot did
 
@@ -30,11 +31,25 @@ class Bot(object):
     def parseCommand(self, line):
         ''' Parse command lines 
         '''
-        has_cmd = cmd_seq.match(line)
-        has_cmd
-        print(has_cmd)
+        cmds = re.findall(self.cmd_seq, line)
+        print(cmds)
 
-        return True;  #TODO: Return based on it being a command or not
+        if(len(cmds) == 0):
+            return False
+        else:
+            if(cmds[0] == 'ENABLE'):
+                print("Enabling bot.")
+                self.enabled = True
+
+            elif(cmds[0] == 'DISABLE'):
+                print("Disabling bot.")
+                self.enabled = False
+
+            else:
+                print("Bot::parseCommand:  Invalid command argumnet " + cmds[0])
+
+        
+            return True  #TODO: Return based on it being a command or not
 
     #--------------------------------------------------------------------------------
     def parseNonCommand(self, line):

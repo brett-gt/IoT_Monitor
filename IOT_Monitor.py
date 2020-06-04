@@ -8,7 +8,7 @@ from Proxy import proxy
 from Telnet import Session
 
 import Secrets 
-import Bot
+from Bot import Bot
 import os
 import threading
 
@@ -31,8 +31,11 @@ def receive_handler():
             print("EOF from pipe")
             break
         else:
-            Bot.take_device_input(data)
-            proxy.transmit(data)
+            was_cmd = dataBot.take_device_input(data)
+
+            #TODO: Need to repeat command results back out proxy
+            if(not was_cmd):  #Don't transmit commands
+                proxy.transmit(data)
 
     print("\n\n*** Receive_handler, stop set.")
 
@@ -58,7 +61,7 @@ def transmit_handler():
                 if line[-1] == '\r':
                     line = line[:-1]
 
-                Bot.take_user_input(line)
+                dataBot.take_user_input(line)
                 telnetSess.handle_output_line(line)
             #TODO: Only pass to endpoint if bot doesn't want to act on it
             
@@ -80,6 +83,7 @@ print("-------------------------------------------------------------------------
 # are used to read and write through the pipe.
 socketToPipeR, socketToPipeW = os.pipe()  
 pipeToSocketR, pipeToSocketW = os.pipe()
+dataBot = Bot()
 
 stop = threading.Event()                        # Stop event for killing threads
 

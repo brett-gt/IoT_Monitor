@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{75a51c14-bc67-4567-9618-cc58933dc397}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>Bot.py</StartupFile>
+    <StartupFile>IOT_Monitor.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
