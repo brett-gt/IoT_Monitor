@@ -1,8 +1,5 @@
 ''' Handle send text messages through AWS SNS service.
 '''
-
-#TODO:  Need to figure out how to hide the AWS keys before put this on github
-
 #Need to pip install boto3 to support
 
 import boto3
