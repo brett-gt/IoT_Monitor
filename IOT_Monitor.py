@@ -13,6 +13,7 @@ import os
 import threading
 
 
+
 #---------------------------------------------------------------------------------
 # Functions
 #---------------------------------------------------------------------------------
@@ -23,7 +24,7 @@ def receive_handler():
         Bot output and end-point data are passed through to the proxy and 
         the bot output (if any) is sent back to the end-point. 
     '''
-    print("Proxy transmit thread starting...")
+    print("receive_handler starting...")
     while not stop.is_set():
         data = os.read(pipeToSocketR, 4096)
         if not data:
@@ -33,23 +34,39 @@ def receive_handler():
             Bot.take_device_input(data)
             proxy.transmit(data)
 
+    print("\n\n*** Receive_handler, stop set.")
+
 #---------------------------------------------------------------------------------
 def transmit_handler():
-    ''' Thread function to transmit data from the bot/proxy to the client.
-        This data is received via a pipe which is written to by the bot or telnet connection.
+    ''' Thread function to transmit data from the bot/proxy to the end-point.
+        This data is received via a pipe which is written to by the bot or proxy connection.
     '''
     data = b''  # to handle partial lines
     while not stop.is_set():
         try:
             data += os.read(socketToPipeR, 4096)
-            Bot.take_user_input(data)
-            telnetSess.handle_from_pipe(data)
+
+            lines = data.split(b'\n')
+            if lines[-1] != '':  # received partial line, don't process
+                data = lines[-1]
+            else:
+                data = b''
+            lines = lines[:-1]  # chop off either the last empty line, or the partial line
+
+            for line in lines:
+                line = line.decode('utf-8')
+                if line[-1] == '\r':
+                    line = line[:-1]
+
+                Bot.take_user_input(line)
+                telnetSess.handle_output_line(line)
             #TODO: Only pass to endpoint if bot doesn't want to act on it
             
-
         except EOFError:
             telnetSess.log("EOF in pipe")
+            print("\n\n*** ERROR:  EOF in transmit_handler pipe.")
             stop.set()
+
 
 #---------------------------------------------------------------------------------
 # Main Code 
@@ -59,6 +76,8 @@ print("Running Bot")
 print("--------------------------------------------------------------------------")
 
 # Create pipes for moving the data
+# The way these definitions work is to define a reader and a writer side.  These pairs
+# are used to read and write through the pipe.
 socketToPipeR, socketToPipeW = os.pipe()  
 pipeToSocketR, pipeToSocketW = os.pipe()
 

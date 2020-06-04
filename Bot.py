@@ -17,7 +17,7 @@ def take_user_input(line):
     '''
     parseCommand(line)
     
-    return result;
+    return 0;
 
 #--------------------------------------------------------------------------------
 def parseCommand(line):

@@ -16,7 +16,7 @@ telnetlib.GMCP = b'\xc9'
 class Session(object):
     #----------------------------------------------------------------------------
     def __init__(self, pipeToSocketW, socketToPipeR, stop):
-        self.mud_encoding = 'iso-8859-1'
+        self.endpoint_encoding = 'iso-8859-1'
         self.client_encoding = 'utf-8'
         self.gmcp = {}
 
@@ -59,7 +59,7 @@ class Session(object):
     
     #----------------------------------------------------------------------------
     def gmcpOut(self, msg):
-        self.telnet.sock.sendall(telnetlib.IAC + telnetlib.SB + telnetlib.GMCP + msg.encode(self.mud_encoding) + telnetlib.IAC + telnetlib.SE)
+        self.telnet.sock.sendall(telnetlib.IAC + telnetlib.SB + telnetlib.GMCP + msg.encode(self.endpoint_encoding) + telnetlib.IAC + telnetlib.SE)
 
     #----------------------------------------------------------------------------
     def iac(self, sock, cmd, option):
@@ -83,7 +83,7 @@ class Session(object):
             data = self.telnet.read_sb_data()
             if data and data[0] == ord(telnetlib.GMCP):
                 try:
-                    self.handleGmcp(data[1:].decode(self.mud_encoding))
+                    self.handleGmcp(data[1:].decode(self.endpoint_encoding))
                 except Exception as e:
                     traceback.print_exc()
 
@@ -126,7 +126,7 @@ class Session(object):
     #----------------------------------------------------------------------------
     def send(self, line):
         print("> ", line)
-        self.telnet.write((line + '\n').encode(self.mud_encoding))
+        self.telnet.write((line + '\n').encode(self.endpoint_encoding))
 
     #----------------------------------------------------------------------------
     def handle_from_telnet(self):
@@ -135,10 +135,9 @@ class Session(object):
         except:
             self.log("EOF on telnet")
             self.stopFlag.set()
-            #self.world.quit()
             raise
         try:
-            data = data.decode(self.mud_encoding)
+            data = data.decode(self.endpoint_encoding)
         except UnicodeError as e:
             print("Unicode error:", e)
             print("Data was:", data)
@@ -150,18 +149,11 @@ class Session(object):
         if data != '':
             prn = []
             for line in data.split('\n'):
-                #if line:
-                #    replacement = None
-                #    try:
-                #        replacement = self.world.trigger(line.strip())
-                #    except Exception as e:
-                #        traceback.print_exc()
-                #    if replacement is not None:
-                #        line = replacement
                 prn.append(line)
-            self.pipeToSocketW.write('\n'.join(prn).encode(self.mud_encoding))
+            self.pipeToSocketW.write('\n'.join(prn).encode(self.endpoint_encoding))
             self.pipeToSocketW.flush()
-        
+    
+            #TODO: Test output of received data...
             print('\n'.join(prn))
 
     #----------------------------------------------------------------------------
