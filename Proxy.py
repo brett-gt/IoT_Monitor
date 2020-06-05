@@ -15,14 +15,14 @@ class proxy(object):
     '''
 
     #----------------------------------------------------------------------------
-    def __init__(self, bindAddr, listenPort, socketToPipeW, pipeToSocketR, stop):
+    def __init__(self, bindAddr, listenPort, pipeProxyOutput, pipeToSocketR, stop):
         ''' Proxy initialization, sets up listener socket and pipes for reading/writing
         '''
         self.pipeToSocketBuffer = []  # Hold data to be sent to the socket
         self.clientSocket = None      # Placeholder for connections we receive
 
-        self.socketToPipeW = socketToPipeW
-        self.pipeToSocketR = pipeToSocketR
+        self.pipeProxyOutput = pipeProxyOutput
+        #self.pipeToSocketR = pipeToSocketR
         self.stop = stop
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)      # Socket server listens to
@@ -33,7 +33,7 @@ class proxy(object):
 
     #----------------------------------------------------------------------------
     def transmit(self, data):
-        ''' Thread function to receive data to the client (either bot to client or MUD to client)
+        ''' Thread function to transmit data to the client (either bot to client or device to client)
             This data is received via a pipe which is written to by the bot or telnet connection.
         '''
         if self.clientSocket:
@@ -41,24 +41,13 @@ class proxy(object):
         else: #Not currently connected, queue it up
             self.pipeToSocketBuffer.append(data)
 
-        #print("Proxy transmit thread starting...")
-        #while not self.stop.is_set():
-        #    data = os.read(self.pipeToSocketR, 4096)
-        #    if not data:
-        #        print("EOF from pipe")
-        #        break
-        #    if self.clientSocket:
-        #        self.clientSocket.sendall(data)  
-        #    else: #Not currently connected, queue it up
-        #        self.pipeToSocketBuffer.append(data)
-
     #----------------------------------------------------------------------------
     def receive(self):
-        ''' Thread function to transmit data to the MID (either bot to MID or proxy client to MUD)
+        ''' Thread function to transmit data to the device (either bot to device or proxy to device)
             This data is received via a pipe which is written to by the bot or proxy connection.
         '''
         print("Proxy receive thread starting...")
-        self.socketToPipeW = os.fdopen(self.socketToPipeW, 'wb')
+        self.pipeProxyOutput = os.fdopen(self.pipeProxyOutput, 'wb')
         addr = None
         clients = []
 
@@ -87,7 +76,7 @@ class proxy(object):
                         self.clientSocket = None
                         print("socket disconnected")
                     else:
-                        self.socketToPipeW.write(data)  # TODO: partial writes?
-                        self.socketToPipeW.flush()
+                        self.pipeProxyOutput.write(data)  # TODO: partial writes?
+                        self.pipeProxyOutput.flush()
         print("Gracefully shutting down in serve")
 

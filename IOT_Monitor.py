@@ -13,41 +13,37 @@ import os
 import threading
 
 
-
 #---------------------------------------------------------------------------------
 # Functions
 #---------------------------------------------------------------------------------
 
 #---------------------------------------------------------------------------------
 def receive_handler():
-    ''' Receives data from the end-point.  It then parses it with the bot.
-        Bot output and end-point data are passed through to the proxy and 
-        the bot output (if any) is sent back to the end-point. 
+    ''' Receives data from the devices and parses it with the bot.
+        Bot output and device data are passed through to the proxy and 
+        the bot output (if any) is sent back to the device. 
     '''
     print("receive_handler starting...")
     while not stop.is_set():
-        data = os.read(pipeToSocketR, 4096)
+        data = os.read(pipeDeviceOutputRead, 4096)
         if not data:
             print("EOF from pipe")
             break
         else:
-            was_cmd = dataBot.take_device_input(data)
-
-            #TODO: Need to repeat command results back out proxy
-            if(not was_cmd):  #Don't transmit commands
-                proxy.transmit(data)
+            dataBot.take_device_input(data)
+            proxy.transmit(data)
 
     print("\n\n*** Receive_handler, stop set.")
 
 #---------------------------------------------------------------------------------
 def transmit_handler():
-    ''' Thread function to transmit data from the bot/proxy to the end-point.
+    ''' Thread function to transmit data from the bot/proxy to the device.
         This data is received via a pipe which is written to by the bot or proxy connection.
     '''
     data = b''  # to handle partial lines
     while not stop.is_set():
         try:
-            data += os.read(socketToPipeR, 4096)
+            data += os.read(pipeProxyOutputRead, 4096)
 
             lines = data.split(b'\n')
             if lines[-1] != '':  # received partial line, don't process
@@ -61,9 +57,13 @@ def transmit_handler():
                 if line[-1] == '\r':
                     line = line[:-1]
 
-                dataBot.take_user_input(line)
-                telnetSess.handle_output_line(line)
-            #TODO: Only pass to endpoint if bot doesn't want to act on it
+                response = dataBot.take_proxy_input(line)
+                if(not response): #No response, so pass this through to session
+                    telnetSess.handle_output_line(line)
+                else:
+                    for line in response:
+                        proxy.transmit(line.encode())
+
             
         except EOFError:
             telnetSess.log("EOF in pipe")
@@ -81,19 +81,18 @@ print("-------------------------------------------------------------------------
 # Create pipes for moving the data
 # The way these definitions work is to define a reader and a writer side.  These pairs
 # are used to read and write through the pipe.
-socketToPipeR, socketToPipeW = os.pipe()  
-pipeToSocketR, pipeToSocketW = os.pipe()
-dataBot = Bot()
+pipeProxyOutputRead, pipeProxyOutputWrite = os.pipe()  
+pipeDeviceOutputRead, pipeDeviceOutputWrite = os.pipe()
 
 stop = threading.Event()                        # Stop event for killing threads
 
 # Start the proxy server so can connect an external client
 print("***Starting proxy server...")
 
-proxy = proxy('127.0.0.1', Secrets.proxy_port, socketToPipeW, pipeToSocketR, stop)
+proxy = proxy('127.0.0.1', Secrets.proxy_port, pipeProxyOutputWrite, pipeDeviceOutputRead, stop)
 print("***     Proxy started.")
        
-pipeToSocketW = os.fdopen(pipeToSocketW, 'wb')
+pipeDeviceOutputWrite = os.fdopen(pipeDeviceOutputWrite, 'wb')
 proxyRxThread = threading.Thread(target=proxy.receive)
 proxyRxThread.start()
 print("***     Received thread started.")
@@ -106,9 +105,11 @@ print("***Proxy server complete.")
 
 # Connect via telent
 print("***Starting telnet session...")
-telnetSess = Session(pipeToSocketW, socketToPipeR, stop)
+telnetSess = Session(pipeDeviceOutputWrite, pipeProxyOutputRead, stop)
 handlePipeThread = threading.Thread(target=transmit_handler)
 handlePipeThread.start()
+
+dataBot = Bot()
 
 print("***     Logging in...")
 telnetSess.login()

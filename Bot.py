@@ -5,66 +5,110 @@ class Bot(object):
     # Globals
     #--------------------------------------------------------------------------------
     
-
     #----------------------------------------------------------------------------
     def __init__(self):
-        self.enabled = True;
-
+        self.version = "1.0"
         self.cmd_seq = re.compile('^!#(\w+)')
 
+        self.enabled = True;
+        self.msgs_sent = 0;
+
     #--------------------------------------------------------------------------------
-    def take_user_input(self, line):
+    def take_proxy_input(self, line):
         ''' This function parses what users type through proxy.  Enables control of the
             bot without rebuilding code.  
         
             Argument:
                 line - line of text to be parsed
         '''
-        was_cmd = self.parseCommand(line)
+        response = self.parseCommand(line)
 
-        if(self.enabled and was_cmd == False):
+        if(self.enabled and not response):
             self.parseNonCommand(line)
             
-        return was_cmd;  #TODO: May want to return if Bot Handled or not so don't forward to end point if Bot did
+        return response;  
 
     #--------------------------------------------------------------------------------
     def parseCommand(self, line):
-        ''' Parse command lines 
+        ''' Check and see if this is a command sequence, if so handle it.
         '''
         cmds = re.findall(self.cmd_seq, line)
         print(cmds)
 
+        data = self.version.encode()
+
         if(len(cmds) == 0):
-            return False
+            return []
+
         else:
+            response = []
             if(cmds[0] == 'ENABLE'):
-                print("Enabling bot.")
+                msg = "Enabling bot."
+                response.append(msg)
+                print(msg)
                 self.enabled = True
 
             elif(cmds[0] == 'DISABLE'):
-                print("Disabling bot.")
+                msg = "Disabling bot."
+                response.append(msg)
+                print(msg)
                 self.enabled = False
 
-            else:
-                print("Bot::parseCommand:  Invalid command argumnet " + cmds[0])
+            elif(cmds[0] == 'STATUS'):
+                response = self.print_status()
 
-        
-            return True  #TODO: Return based on it being a command or not
+            else:
+                msg = "Bot::parseCommand:  Invalid command argumnet " + cmds[0]
+                print(msg)
+                response.append(msg)
+
+            return response  #TODO: Return based on it being a command or not
 
     #--------------------------------------------------------------------------------
     def parseNonCommand(self, line):
-        print("parseLine")
-
+        ''' Place holder.  Don't think I will need this because don't have a use case
+            to process non-command lines from the user. Instead these are just passed
+            through (which is handled at a higher level).
+        '''
+        return False
 
     #--------------------------------------------------------------------------------
     def take_device_input(self, line):
         ''' This function parses what is received from device.  Actions determine by bot
             state/code.
-        
-            Argument:
-                line - line of text to be parsed
         '''
         print(line)
+
+
+    #--------------------------------------------------------------------------------
+    def handle_disconnect(self):
+        ''' Place holder with function to handle get disconnected (may try reconnect,
+            may send message, etc)
+        '''
+
+
+    #--------------------------------------------------------------------------------
+    def print_status(self):
+        ''' Print Bot status.  
+            TODO: Needs to be updated with major bot changes.
+            TODO: Other ideas: count how many text messages have been sent, 
+        '''
+        status_lines = []
+        status_lines.append("\n\n------------------------------------------------------------------------\n")
+        status_lines.append("                         BOT Version " +  self.version + "\n\n")
+        status_lines.append(" Enabled: " + str(self.enabled) + "\n")
+        status_lines.append(" Messages Sent: " + str(self.msgs_sent) + "\n")
+        status_lines.append("\n------------------------------------------------------------------------\n")
+
+        for lines in status_lines:
+            print(lines)
+
+        return status_lines
+
+
+
+
+
 
 
 
