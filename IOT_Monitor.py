@@ -1,6 +1,9 @@
 #TODO List: 
 #   Handle disconnects
 #
+#   Transmitting seems kind of slow, either stick proxy TX in a thread or buffer 
+#       data better before transmit.
+#
 #---------------------------------------------------------------------------------
 # Imports
 #---------------------------------------------------------------------------------
@@ -18,12 +21,12 @@ import threading
 #---------------------------------------------------------------------------------
 
 #---------------------------------------------------------------------------------
-def receive_handler():
+def device_handler():
     ''' Receives data from the devices and parses it with the bot.
         Bot output and device data are passed through to the proxy and 
         the bot output (if any) is sent back to the device. 
     '''
-    print("receive_handler starting...")
+    print("device_handler starting...")
     while not stop.is_set():
         data = os.read(pipeDeviceOutputRead, 4096)
         if not data:
@@ -36,10 +39,11 @@ def receive_handler():
     print("\n\n*** Receive_handler, stop set.")
 
 #---------------------------------------------------------------------------------
-def transmit_handler():
+def proxy_handler():
     ''' Thread function to transmit data from the bot/proxy to the device.
         This data is received via a pipe which is written to by the bot or proxy connection.
     '''
+    print("proxy_handler starting...")
     data = b''  # to handle partial lines
     while not stop.is_set():
         try:
@@ -57,13 +61,9 @@ def transmit_handler():
                 if line[-1] == '\r':
                     line = line[:-1]
 
-                response = dataBot.take_proxy_input(line)
-                if(not response): #No response, so pass this through to session
+                was_cmd = dataBot.take_proxy_input(line)
+                if(not was_cmd): #No response, so pass this through to session
                     telnetSess.handle_output_line(line)
-                else:
-                    for line in response:
-                        proxy.transmit(line.encode())
-
             
         except EOFError:
             telnetSess.log("EOF in pipe")
@@ -75,7 +75,7 @@ def transmit_handler():
 # Main Code 
 #---------------------------------------------------------------------------------
 print("--------------------------------------------------------------------------")
-print("Running Bot")
+print("   Running Bot")
 print("--------------------------------------------------------------------------")
 
 # Create pipes for moving the data
@@ -97,25 +97,25 @@ proxyRxThread = threading.Thread(target=proxy.receive)
 proxyRxThread.start()
 print("***     Received thread started.")
 
-RxThread = threading.Thread(target=receive_handler)
-RxThread.start()
+deviceRxThread = threading.Thread(target=device_handler)
+deviceRxThread.start()
 print("***     Received thread started.")
 
 print("***Proxy server complete.")
 
 # Connect via telent
 print("***Starting telnet session...")
-telnetSess = Session(pipeDeviceOutputWrite, pipeProxyOutputRead, stop)
-handlePipeThread = threading.Thread(target=transmit_handler)
+telnetSess = Session(pipeDeviceOutputWrite, stop)
+handlePipeThread = threading.Thread(target=proxy_handler)
 handlePipeThread.start()
 
-dataBot = Bot()
+dataBot = Bot(proxy, telnetSess)
 
 print("***     Logging in...")
 telnetSess.login()
 
 print("***Telnet init complete.")
-telnetSess.run()
+telnetSess.run()    #Handles receiving data from Telnet
 #receive_handler()
 
 

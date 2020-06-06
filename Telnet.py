@@ -12,13 +12,11 @@ import Secrets
 
 class Session(object):
     #----------------------------------------------------------------------------
-    def __init__(self, pipeDeviceOutputWrite, socketToPipeR, stop):
+    def __init__(self, pipeDeviceOutputWrite, stop):
         self.endpoint_encoding = 'iso-8859-1'
         self.client_encoding = 'utf-8'
-        #self.gmcp = {}
 
         self.pipeDeviceOutputWrite = pipeDeviceOutputWrite
-        #self.socketToPipeR = socketToPipeR
         self.stop = stop
 
         self.host = Secrets.host

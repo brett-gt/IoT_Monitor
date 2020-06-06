@@ -6,9 +6,15 @@ class Bot(object):
     #--------------------------------------------------------------------------------
     
     #----------------------------------------------------------------------------
-    def __init__(self):
+    def __init__(self, proxy, device):
+        ''' TODO: Passing in proxy and device interfaces so we can directly transmit data. 
+                  Not 100% sure I like that architecture but getting functionality in now.
+        '''
         self.version = "1.0"
         self.cmd_seq = re.compile('^!#(\w+)')
+
+        self.proxy = proxy
+        self.device = device
 
         self.enabled = True;
         self.msgs_sent = 0;
@@ -21,51 +27,45 @@ class Bot(object):
             Argument:
                 line - line of text to be parsed
         '''
-        response = self.parseCommand(line)
+        was_cmd = self.parse_command(line)
 
-        if(self.enabled and not response):
-            self.parseNonCommand(line)
+        if(self.enabled and not was_cmd):
+            self.parse_non_command(line)
             
-        return response;  
+        return was_cmd;  
 
     #--------------------------------------------------------------------------------
-    def parseCommand(self, line):
+    def parse_command(self, line):
         ''' Check and see if this is a command sequence, if so handle it.
         '''
         cmds = re.findall(self.cmd_seq, line)
         print(cmds)
 
-        data = self.version.encode()
+        was_cmd = False
 
-        if(len(cmds) == 0):
-            return []
-
-        else:
-            response = []
+        if(len(cmds) != 0):
+            was_cmd = True
+            msg = []
             if(cmds[0] == 'ENABLE'):
-                msg = "Enabling bot."
-                response.append(msg)
-                print(msg)
+                msg.append("Enabling bot.")
                 self.enabled = True
 
             elif(cmds[0] == 'DISABLE'):
-                msg = "Disabling bot."
-                response.append(msg)
-                print(msg)
+                msg.append("Disabling bot.")
                 self.enabled = False
 
             elif(cmds[0] == 'STATUS'):
-                response = self.print_status()
+                self.print_status()
 
             else:
-                msg = "Bot::parseCommand:  Invalid command argumnet " + cmds[0]
-                print(msg)
-                response.append(msg)
+               msg.append("Bot::parseCommand:  Invalid command argumnet " + cmds[0])
 
-            return response  #TODO: Return based on it being a command or not
+            self.proxy_print(msg)
+
+        return was_cmd  #TODO: Return based on it being a command or not
 
     #--------------------------------------------------------------------------------
-    def parseNonCommand(self, line):
+    def parse_non_command(self, line):
         ''' Place holder.  Don't think I will need this because don't have a use case
             to process non-command lines from the user. Instead these are just passed
             through (which is handled at a higher level).
@@ -82,7 +82,7 @@ class Bot(object):
 
     #--------------------------------------------------------------------------------
     def handle_disconnect(self):
-        ''' Place holder with function to handle get disconnected (may try reconnect,
+        ''' TODO: Place holder with function to handle get disconnected (may try reconnect,
             may send message, etc)
         '''
 
@@ -100,10 +100,15 @@ class Bot(object):
         status_lines.append(" Messages Sent: " + str(self.msgs_sent) + "\n")
         status_lines.append("\n------------------------------------------------------------------------\n")
 
-        for lines in status_lines:
-            print(lines)
+        self.proxy_print(status_lines)
 
-        return status_lines
+    #--------------------------------------------------------------------------------
+    def proxy_print(self, buffer):
+        for line in buffer:
+            print(line)
+            self.proxy.transmit(line.encode())
+            
+
 
 
 
