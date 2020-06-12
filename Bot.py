@@ -1,14 +1,13 @@
 import re
+from BotActions import parse_device_input
+from datetime import datetime
+import Secrets
+from SNS import SNS
 
-class Bot(object):
-    #--------------------------------------------------------------------------------
-    # Globals
-    #--------------------------------------------------------------------------------
-    
+class Bot(object):  
     #----------------------------------------------------------------------------
     def __init__(self, proxy, device):
-        ''' TODO: Passing in proxy and device interfaces so we can directly transmit data. 
-                  Not 100% sure I like that architecture but getting functionality in now.
+        ''' 
         '''
         self.version = "1.0"
         self.cmd_seq = re.compile('^!#(\w+)')
@@ -17,7 +16,9 @@ class Bot(object):
         self.device = device
 
         self.enabled = True;
-        self.msgs_sent = 0;
+
+        self.messanger = SNS([Secrets.phone_num])
+
 
     #--------------------------------------------------------------------------------
     def take_proxy_input(self, line):
@@ -77,8 +78,12 @@ class Bot(object):
         ''' This function parses what is received from device.  Actions determine by bot
             state/code.
         '''
-        print(line)
+        results = parse_device_input(line)
 
+        if(results):
+            for line in results:
+                self.messanger.send_text(line)
+     
 
     #--------------------------------------------------------------------------------
     def handle_disconnect(self):
@@ -100,7 +105,8 @@ class Bot(object):
         status_lines.append(" Messages Sent: " + str(self.msgs_sent) + "\n")
         status_lines.append("\n------------------------------------------------------------------------\n")
 
-        self.proxy_print(status_lines)
+        self.proxy_print(status_lines)  
+
 
     #--------------------------------------------------------------------------------
     def proxy_print(self, buffer):

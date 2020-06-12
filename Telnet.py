@@ -1,4 +1,5 @@
 from select import select
+from queue import Queue
 import importlib
 import json
 import os
@@ -12,9 +13,8 @@ import Secrets
 
 class Session(object):
     #----------------------------------------------------------------------------
-    def __init__(self, pipeDeviceOutputWrite, stop):
-        self.endpoint_encoding = 'iso-8859-1'
-        self.client_encoding = 'utf-8'
+    def __init__(self, pipeDeviceOutputWrite, stop, encoding = "iso-8859-1"):
+        self.endpoint_encoding = encoding
 
         self.pipeDeviceOutputWrite = pipeDeviceOutputWrite
         self.stop = stop
@@ -43,8 +43,9 @@ class Session(object):
         print("---------\n")
         print(line)
         print("\n")
-        self.pipeDeviceOutputWrite.write("---------\n".encode(self.client_encoding))
-        self.pipeDeviceOutputWrite.write(line.encode(self.client_encoding))
+
+        self.pipeDeviceOutputWrite.write(b"---------\n")
+        self.pipeDeviceOutputWrite.write(bytes(line,"ascii"))
         self.pipeDeviceOutputWrite.write(b"\n")
         self.pipeDeviceOutputWrite.flush()
 
@@ -91,7 +92,7 @@ class Session(object):
             prn = []
             for line in data.split('\n'):
                 prn.append(line)
-            self.pipeDeviceOutputWrite.write('\n'.join(prn).encode(self.endpoint_encoding))
+            self.pipeDeviceOutputWrite.write('\n'.join(prn).encode())
             self.pipeDeviceOutputWrite.flush()
     
             #TODO: Test output of received data...
@@ -99,7 +100,7 @@ class Session(object):
 
     #----------------------------------------------------------------------------
     def show(self, line):
-        self.pipeDeviceOutputWrite.write(line.encode(self.client_encoding))
+        self.pipeDeviceOutputWrite.write(line)
         self.pipeDeviceOutputWrite.flush()
 
     #----------------------------------------------------------------------------
@@ -132,6 +133,7 @@ class Session(object):
 
         except Exception as e:
             self.log("Exception in run():", e)
+
         finally:
             self.stop.set()
             self.log("Closing")

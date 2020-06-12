@@ -33,7 +33,8 @@ def device_handler():
             print("EOF from pipe")
             break
         else:
-            dataBot.take_device_input(data)
+            text = data.decode(proxy_encode)
+            dataBot.take_device_input(text)
             proxy.transmit(data)
 
     print("\n\n*** Receive_handler, stop set.")
@@ -48,7 +49,7 @@ def proxy_handler():
     while not stop.is_set():
         try:
             data += os.read(pipeProxyOutputRead, 4096)
-
+  
             lines = data.split(b'\n')
             if lines[-1] != '':  # received partial line, don't process
                 data = lines[-1]
@@ -57,7 +58,8 @@ def proxy_handler():
             lines = lines[:-1]  # chop off either the last empty line, or the partial line
 
             for line in lines:
-                line = line.decode('utf-8')
+ 
+                print(line)
                 if line[-1] == '\r':
                     line = line[:-1]
 
@@ -78,6 +80,8 @@ print("-------------------------------------------------------------------------
 print("   Running Bot")
 print("--------------------------------------------------------------------------")
 
+proxy_encode = 'UTF-8'
+
 # Create pipes for moving the data
 # The way these definitions work is to define a reader and a writer side.  These pairs
 # are used to read and write through the pipe.
@@ -87,34 +91,39 @@ pipeDeviceOutputRead, pipeDeviceOutputWrite = os.pipe()
 stop = threading.Event()                        # Stop event for killing threads
 
 # Start the proxy server so can connect an external client
-print("***Starting proxy server...")
+print("Starting proxy server...")
 
 proxy = proxy('127.0.0.1', Secrets.proxy_port, pipeProxyOutputWrite, pipeDeviceOutputRead, stop)
-print("***     Proxy started.")
+print("***     Proxy initialized.")
        
 pipeDeviceOutputWrite = os.fdopen(pipeDeviceOutputWrite, 'wb')
 proxyRxThread = threading.Thread(target=proxy.receive)
 proxyRxThread.start()
-print("***     Received thread started.")
+print("***     Proxy read thread started.")
 
 deviceRxThread = threading.Thread(target=device_handler)
 deviceRxThread.start()
-print("***     Received thread started.")
+print("***     Device read thread started.")
 
-print("***Proxy server complete.")
+print("Proxy server complete.\n\n")
 
 # Connect via telent
-print("***Starting telnet session...")
+print("Starting telnet session...")
+
+print("***     Starting device...")
 telnetSess = Session(pipeDeviceOutputWrite, stop)
+
+print("***     Starting thread to write to device...")
 handlePipeThread = threading.Thread(target=proxy_handler)
 handlePipeThread.start()
 
+print("***     Starting bot...")
 dataBot = Bot(proxy, telnetSess)
 
 print("***     Logging in...")
 telnetSess.login()
 
-print("***Telnet init complete.")
+print("Telnet init complete.\n\n")
 telnetSess.run()    #Handles receiving data from Telnet
 #receive_handler()
 

@@ -20,6 +20,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Bot.py" />
+    <Compile Include="BotActions.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="IOT_Monitor.py" />
     <Compile Include="Proxy.py" />
     <Compile Include="Secrets.py" />

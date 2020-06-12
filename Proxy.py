@@ -38,6 +38,7 @@ class proxy(object):
         '''
         if self.clientSocket:
             self.clientSocket.sendall(data)  
+
         else: #Not currently connected, queue it up
             self.pipeToSocketBuffer.append(data)
 
@@ -57,16 +58,19 @@ class proxy(object):
                 #Only allow one connection at a time
                 if fd == self.sock:   # New connection
                     print("Proxy.serve: new client")
+
                     if self.clientSocket:
                         print("Proxy.serve:  booting old client")
                         self.clientSocket.sendall(b"Superseded. Bye!")
                         self.clientSocket.close()
+
                     self.clientSocket, addr = self.sock.accept()
                     clients = [self.clientSocket]
 
                     #Send over que data to catch it up
                     for item in self.pipeToSocketBuffer:
                         self.clientSocket.sendall(item)
+
                     self.pipeToSocketBuffer = []
 
                 elif fd == self.clientSocket:  #Already connected
